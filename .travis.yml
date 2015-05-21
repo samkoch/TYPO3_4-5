@@ -1,0 +1,21 @@
+language: php
+php:
+  - 5.2
+  - 5.3
+  - 5.4
+  - 5.5
+
+notifications:
+  irc:
+    channels:
+      - "irc.freenode.net#typo3-cms"
+    on_success: change
+    on_failure: always
+    use_notice: true
+  slack:
+    rooms:
+      secure: nHWVTPyG3CQWIcYA1LASS11dD0/NBcmrAyr3xxQW0XYtH47ZUKRlEtxrVLuL7ptciNwMbfZgsiRQ1QGWDerHUlBkg0iwRxpUZgeylzWaiXsHFVAp2IBfEX54KrWeYm9gewIBDDtnp+sLgpXGgmpIs2bAGkZe5129UsUExoWh0+g=
+    on_success: change
+    on_failure: always
+
+script: function check_files() { for file in `find . -name \*.php`; do if ! php -l $file > /dev/null; then echo "Syntax errors detected in file $file"; return 99; fi;  done }; check_files
