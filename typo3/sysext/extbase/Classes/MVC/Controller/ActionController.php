@@ -41,6 +41,11 @@ class Tx_Extbase_MVC_Controller_ActionController extends Tx_Extbase_MVC_Controll
 	protected $reflectionService;
 
 	/**
+	 * @var Tx_Extbase_Security_Cryptography_HashService
+	 */
+	protected $cryptographyHashService;
+
+	/**
 	 * The current view, as resolved by resolveView()
 	 *
 	 * @var Tx_Extbase_MVC_View_ViewInterface
@@ -98,6 +103,16 @@ class Tx_Extbase_MVC_Controller_ActionController extends Tx_Extbase_MVC_Controll
 	 */
 	public function injectReflectionService(Tx_Extbase_Reflection_Service $reflectionService) {
 		$this->reflectionService = $reflectionService;
+	}
+
+	/**
+	 * Inject a cryptography hash service
+	 *
+	 * @param Tx_Extbase_Security_Cryptography_HashService $cryptographyHashService The cryptography hash service
+	 * @return void
+	 */
+	public function injectCryptographyHashService(Tx_Extbase_Security_Cryptography_HashService $cryptographyHashService) {
+		$this->cryptographyHashService = $cryptographyHashService;
 	}
 
 	/**
@@ -393,8 +408,11 @@ class Tx_Extbase_MVC_Controller_ActionController extends Tx_Extbase_MVC_Controll
 		}
 
 		if ($this->request->hasArgument('__referrer')) {
-			$referrer = $this->request->getArgument('__referrer');
-			$this->forward($referrer['actionName'], $referrer['controllerName'], $referrer['extensionName'], $this->request->getArguments());
+			$referrerArguments = $this->request->getArgument('__referrer');
+			if (isset($referrerArguments['@request'])) {
+				$referrer = unserialize($this->cryptographyHashService->validateAndStripHmac($referrerArguments['@request']));
+				$this->forward($referrer['actionName'], $referrer['controllerName'], $referrer['extensionName'], $this->request->getArguments());
+			}
 		}
 
 		$message = 'An error occurred while trying to call ' . get_class($this) . '->' . $this->actionMethodName . '().' . PHP_EOL;

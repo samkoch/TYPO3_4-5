@@ -65,12 +65,22 @@ class Tx_Fluid_ViewHelpers_FormViewHelper extends Tx_Fluid_ViewHelpers_Form_Abst
 	protected $requestHashService;
 
 	/**
+	 * @var Tx_Extbase_Security_Cryptography_HashService
+	 */
+	protected $cryptographyHashService;
+
+	/**
 	 * We need the arguments of the formActionUri on requesthash calculation
 	 * therefore we will store them in here right after calling uriBuilder
 	 *
 	 * @var array
 	 */
 	protected $formActionUriArguments;
+
+	/**
+	 * @var boolean
+	 */
+	private $securedReferrerFieldRendered = FALSE;
 
 	/**
 	 * Inject a request hash service
@@ -81,6 +91,16 @@ class Tx_Fluid_ViewHelpers_FormViewHelper extends Tx_Fluid_ViewHelpers_Form_Abst
 	 */
 	public function injectRequestHashService(Tx_Extbase_Security_Channel_RequestHashService $requestHashService) {
 		$this->requestHashService = $requestHashService;
+	}
+
+	/**
+	 * Inject a cryptography hash service
+	 *
+	 * @param Tx_Extbase_Security_Cryptography_HashService $cryptographyHashService The cryptography hash service
+	 * @return void
+	 */
+	public function injectCryptographyHashService(Tx_Extbase_Security_Cryptography_HashService $cryptographyHashService) {
+		$this->cryptographyHashService = $cryptographyHashService;
 	}
 
 	/**
@@ -146,6 +166,7 @@ class Tx_Fluid_ViewHelpers_FormViewHelper extends Tx_Fluid_ViewHelpers_Form_Abst
 		}
 		$content .= $this->renderHiddenIdentityField($this->arguments['object'], $this->getFormObjectName());
 		$content .= $this->renderAdditionalIdentityFields();
+		$content .= $this->renderHiddenSecuredReferrerField();
 		$content .= $this->renderHiddenReferrerFields();
 		$content .= $this->renderRequestHashField(); // Render hmac after everything else has been rendered
 		$content .= LF . '</div>' . LF;
@@ -226,8 +247,35 @@ class Tx_Fluid_ViewHelpers_FormViewHelper extends Tx_Fluid_ViewHelpers_Form_Abst
 		$result .= '<input type="hidden" name="' . $this->prefixFieldName('__referrer[extensionName]') . '" value="' . $extensionName . '" />' . chr(10);
 		$result .= '<input type="hidden" name="' . $this->prefixFieldName('__referrer[controllerName]') . '" value="' . $controllerName . '" />' . chr(10);
 		$result .= '<input type="hidden" name="' . $this->prefixFieldName('__referrer[actionName]') . '" value="' . $actionName . '" />' . chr(10);
+		$result .= $this->renderHiddenSecuredReferrerField();
 		return $result;
 	}
+
+	/**
+	 * Renders hidden form field for secured referrer information about the current controller and action.
+	 *
+	 * This method is called twice, to deal with subclasses of this class in a most compatible way
+	 *
+	 * @return string Hidden field with secured referrer information
+	 */
+	protected function renderHiddenSecuredReferrerField() {
+		if ($this->securedReferrerFieldRendered) {
+			return '';
+		}
+		$request = $this->controllerContext->getRequest();
+		$extensionName = $request->getControllerExtensionName();
+		$controllerName = $request->getControllerName();
+		$actionName = $request->getControllerActionName();
+		$actionRequest = array(
+			'extensionName' => $extensionName,
+			'controllerName' => $controllerName,
+			'actionName' => $actionName,
+		);
+		$result = '<input type="hidden" name="' . $this->prefixFieldName('__referrer[@request]') . '" value="' . htmlspecialchars($this->cryptographyHashService->appendHmac(serialize($actionRequest))) . '" />' . chr(10);
+		$this->securedReferrerFieldRendered = TRUE;
+		return $result;
+	}
+
 
 	/**
 	 * Adds the form object name to the ViewHelperVariableContainer if "objectName" argument or "name" attribute is specified.
