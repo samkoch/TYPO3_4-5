@@ -309,6 +309,9 @@ class tx_cssstyledcontent_pi1 extends tslib_pibase {
 
 				// Explode into an array:
 			$fileArray = t3lib_div::trimExplode(',',$fileList,1);
+			
+				//abilitynet: sort files alphabetically
+            		asort($fileArray);
 
 				// If there were files to list...:
 			if (count($fileArray))	{
